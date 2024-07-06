@@ -4,7 +4,9 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using NLog;
 using NzbDrone.Common.Cache;
+using NzbDrone.Common.Cloud;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Common.Http;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Parser;
@@ -33,14 +35,20 @@ namespace NzbDrone.Core.DataAugmentation.Scene
         private readonly Logger _logger;
         private readonly ICachedDictionary<List<SceneMapping>> _getTvdbIdCache;
         private readonly ICachedDictionary<List<SceneMapping>> _findByTvdbIdCache;
+        private readonly IHttpRequestBuilderFactory _requestBuilderModifier;
+        private readonly IHttpClient _httpClient;
         private bool _updatedAfterStartup;
 
+         // private readonly IHttpClient _httpClient;
         public SceneMappingService(ISceneMappingRepository repository,
                                    ICacheManager cacheManager,
                                    IEnumerable<ISceneMappingProvider> sceneMappingProviders,
                                    IEventAggregator eventAggregator,
-                                   Logger logger)
+                                   Logger logger,
+                                   IHttpClient httpClient,
+                                   ISonarrCloudRequestBuilder requestBuilder)
         {
+            _httpClient = httpClient;
             _repository = repository;
             _sceneMappingProviders = sceneMappingProviders;
             _eventAggregator = eventAggregator;
@@ -48,6 +56,8 @@ namespace NzbDrone.Core.DataAugmentation.Scene
 
             _getTvdbIdCache = cacheManager.GetCacheDictionary<List<SceneMapping>>(GetType(), "tvdb_id");
             _findByTvdbIdCache = cacheManager.GetCacheDictionary<List<SceneMapping>>(GetType(), "find_tvdb_id");
+
+            _requestBuilderModifier = requestBuilder.SkyHookTvdbModifier;
         }
 
         public List<string> GetSceneNames(int tvdbId, List<int> seasonNumbers, List<int> sceneSeasonNumbers)
@@ -215,6 +225,22 @@ namespace NzbDrone.Core.DataAugmentation.Scene
         private void RefreshCache()
         {
             var mappings = _repository.All().ToList();
+
+            var test = mappings.GroupBy(v => v.ParseTerm).ToDictionary(v => v.Key, v => v.ToList());
+            var test2 = mappings.GroupBy(v => v.TvdbId).ToDictionary(v => v.Key.ToString(), v => v.ToList());
+
+            var httpRequest = _requestBuilderModifier.Create().Resource("alternativeTitles").Build();
+
+            httpRequest.AllowAutoRedirect = true;
+            httpRequest.SuppressHttpError = true;
+
+            var httpResponse = _httpClient.Get<List<SceneMapping>>(httpRequest);
+
+            foreach (var newSceneMapping in httpResponse.Resource)
+            {
+                newSceneMapping.Id = mappings[^1].Id + 1;
+                mappings.Add(newSceneMapping);
+            }
 
             _getTvdbIdCache.Update(mappings.GroupBy(v => v.ParseTerm).ToDictionary(v => v.Key, v => v.ToList()));
             _findByTvdbIdCache.Update(mappings.GroupBy(v => v.TvdbId).ToDictionary(v => v.Key.ToString(), v => v.ToList()));

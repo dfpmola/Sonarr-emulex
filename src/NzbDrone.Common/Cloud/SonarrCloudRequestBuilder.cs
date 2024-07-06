@@ -6,6 +6,8 @@ namespace NzbDrone.Common.Cloud
     {
         IHttpRequestBuilderFactory Services { get; }
         IHttpRequestBuilderFactory SkyHookTvdb { get; }
+
+        IHttpRequestBuilderFactory SkyHookTvdbModifier { get; }
     }
 
     public class SonarrCloudRequestBuilder : ISonarrCloudRequestBuilder
@@ -18,10 +20,19 @@ namespace NzbDrone.Common.Cloud
             SkyHookTvdb = new HttpRequestBuilder("https://skyhook.sonarr.tv/v1/tvdb/{route}/{language}/")
                 .SetSegment("language", "en")
                 .CreateFactory();
+            SkyHookTvdbModifier = new HttpRequestBuilder("http://localhost:3000/series/v1/tvdb/")
+                .CreateFactory();
+            /*
+            SkyHookTvdb = new HttpRequestBuilder("https://skyhook.sonarr.tv/v1/tvdb/{route}/{language}/")
+                .SetSegment("language", "en")
+                .CreateFactory();
+            */
         }
 
         public IHttpRequestBuilderFactory Services { get; }
 
         public IHttpRequestBuilderFactory SkyHookTvdb { get; }
+
+        public IHttpRequestBuilderFactory SkyHookTvdbModifier { get; }
     }
 }

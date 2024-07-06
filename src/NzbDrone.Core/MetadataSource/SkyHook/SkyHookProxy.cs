@@ -24,6 +24,7 @@ namespace NzbDrone.Core.MetadataSource.SkyHook
         private readonly ISeriesService _seriesService;
         private readonly IDailySeriesService _dailySeriesService;
         private readonly IHttpRequestBuilderFactory _requestBuilder;
+        private readonly IHttpRequestBuilderFactory _requestBuilderModifier;
 
         public SkyHookProxy(IHttpClient httpClient,
                             ISonarrCloudRequestBuilder requestBuilder,
@@ -37,6 +38,7 @@ namespace NzbDrone.Core.MetadataSource.SkyHook
             _seriesService = seriesService;
             _dailySeriesService = dailySeriesService;
             _requestBuilder = requestBuilder.SkyHookTvdb;
+            _requestBuilderModifier = requestBuilder.SkyHookTvdbModifier;
         }
 
         public Tuple<Series, List<Episode>> GetSeriesInfo(int tvdbSeriesId)
@@ -62,6 +64,19 @@ namespace NzbDrone.Core.MetadataSource.SkyHook
                     throw new HttpException(httpRequest, httpResponse);
                 }
             }
+
+            httpRequest = _requestBuilderModifier.Create()
+                .Resource(tvdbSeriesId.ToString())
+                .Resource(httpResponse.Resource.Title)
+                .Build();
+
+            httpRequest.AllowAutoRedirect = true;
+            httpRequest.SuppressHttpError = true;
+
+            var httpResponseModified = _httpClient.Get<ShowResourceModifier>(httpRequest);
+
+            httpResponse.Resource.Title = httpResponseModified.Resource.Name;
+            httpResponse.Resource.Overview = httpResponseModified.Resource.Overview;
 
             var episodes = httpResponse.Resource.Episodes.Select(MapEpisode);
             var series = MapSeries(httpResponse.Resource);
