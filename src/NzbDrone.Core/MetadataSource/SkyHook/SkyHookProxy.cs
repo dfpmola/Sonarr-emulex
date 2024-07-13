@@ -157,6 +157,43 @@ namespace NzbDrone.Core.MetadataSource.SkyHook
 
                 var httpResponse = _httpClient.Get<List<ShowResource>>(httpRequest);
 
+                httpRequest = _requestBuilderModifier.Create()
+                    .Resource(title.ToLower().Trim())
+                    .Build();
+
+                httpRequest.AllowAutoRedirect = true;
+                httpRequest.SuppressHttpError = true;
+
+                var httpResponseModified = _httpClient.Get<List<SearchShowModifie>>(httpRequest);
+                var resultTvdbIds = httpResponse.Resource.Select(a => a.TvdbId).Intersect(httpResponseModified.Resource.Select(b => b.TvdbId));
+                var result = httpResponse.Resource.Join(httpResponseModified.Resource, e1 => e1.TvdbId, e2 => e2.TvdbId, (e1, e2) => e1);
+
+                var showsToRemove = new List<ShowResource>();
+                var showsToAdd = new List<ShowResource>();
+
+                foreach (var tvdbId in resultTvdbIds)
+                {
+                    var show =  httpResponse.Resource.FirstOrDefault(x => x.TvdbId == tvdbId);
+                    var showTranslation = httpResponseModified.Resource.FirstOrDefault(x => x.TvdbId == tvdbId);
+
+                    showsToRemove.Add(show);
+
+                    show.Title = showTranslation.Name;
+                    show.Overview = showTranslation.Overview;
+
+                    showsToAdd.Add(show);
+                }
+
+                foreach (var show in showsToRemove)
+                {
+                    httpResponse.Resource.Remove(show);
+                }
+
+                foreach (var  show  in showsToAdd)
+                {
+                    httpResponse.Resource.Insert(0, show);
+                }
+
                 return httpResponse.Resource.SelectList(MapSearchResult);
             }
             catch (HttpException ex)

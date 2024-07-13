@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using DryIoc.ImTools;
 using NLog;
 using NzbDrone.Common.Cache;
 using NzbDrone.Common.Cloud;
@@ -226,9 +227,6 @@ namespace NzbDrone.Core.DataAugmentation.Scene
         {
             var mappings = _repository.All().ToList();
 
-            var test = mappings.GroupBy(v => v.ParseTerm).ToDictionary(v => v.Key, v => v.ToList());
-            var test2 = mappings.GroupBy(v => v.TvdbId).ToDictionary(v => v.Key.ToString(), v => v.ToList());
-
             var httpRequest = _requestBuilderModifier.Create().Resource("alternativeTitles").Build();
 
             httpRequest.AllowAutoRedirect = true;
@@ -238,8 +236,11 @@ namespace NzbDrone.Core.DataAugmentation.Scene
 
             foreach (var newSceneMapping in httpResponse.Resource)
             {
-                newSceneMapping.Id = mappings[^1].Id + 1;
-                mappings.Add(newSceneMapping);
+                if (!mappings.Any(mapping => mapping.SearchTerm == newSceneMapping.SearchTerm))
+                {
+                    newSceneMapping.Id = mappings[^1].Id + 1;
+                    mappings.Add(newSceneMapping);
+                }
             }
 
             _getTvdbIdCache.Update(mappings.GroupBy(v => v.ParseTerm).ToDictionary(v => v.Key, v => v.ToList()));
