@@ -64,6 +64,23 @@ jobs:
 
     # Test Artifacts
 
+    - name: Publish win-x64 Test Artifact
+      uses: ./.github/actions/publish-test-artifact
+      with:
+        framework: ${{ env.FRAMEWORK }}
+        runtime: win-x64
+
+    - name: Publish linux-x64 Test Artifact
+      uses: ./.github/actions/publish-test-artifact
+      with:
+        framework: ${{ env.FRAMEWORK }}
+        runtime: linux-x64
+
+    - name: Publish osx-arm64 Test Artifact
+      uses: ./.github/actions/publish-test-artifact
+      with:
+        framework: ${{ env.FRAMEWORK }}
+        runtime: osx-arm64
 
     # Build Artifacts (grouped by OS)
     
