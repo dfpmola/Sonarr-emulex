@@ -67,11 +67,6 @@ jobs:
 
     # Build Artifacts (grouped by OS)
     
-    - name: Publish FreeBSD Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: build_freebsd
-        path: _artifacts/freebsd-*/**/*
     - name: Publish Linux Artifact
       uses: actions/upload-artifact@v4
       with:
