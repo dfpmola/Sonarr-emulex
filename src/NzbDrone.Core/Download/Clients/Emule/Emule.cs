@@ -106,7 +106,7 @@ namespace NzbDrone.Core.Download.Clients.Emule
             foreach (var ed2k in list)
             {
                 /*
-                var properties = ed2k.Value;
+                ///var properties = ed2k.Value;
                 */
                 /*
                 if (!Settings.Tags.All(tag => properties.Tags.Contains(tag)))
